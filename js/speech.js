@@ -14,13 +14,10 @@ class SpeechManager {
         // OpenAI TTS設定
         this.useOpenAITTS = true;  // OpenAI TTSを使用（デフォルト）
         this.ttsVoice = 'nova';    // デフォルト音声（明るい女性の声）
-        this.ttsModel = 'tts-1-hd'; // 高品質モデル
+        this.ttsModel = 'tts-1';   // 標準モデル（低遅延）
         
-        // ストリーミングTTS用のキュー
-        this.audioQueue = [];
-        this.isPlayingQueue = false;
-        this.streamingBuffer = '';
-        this.streamingAudioContext = null;
+        // 音声再生用
+        this.currentAudio = null;
         
         // コールバック
         this.onResult = null;
@@ -189,7 +186,7 @@ class SpeechManager {
                 this.stopSpeaking();
                 
                 this.isSpeaking = true;
-                console.log('OpenAI TTS開始');
+                console.log('OpenAI TTS開始:', text);
 
                 // OpenAI TTS APIで音声を生成
                 const audioBlob = await window.aiClient.textToSpeech(
@@ -200,24 +197,26 @@ class SpeechManager {
 
                 // 音声を再生
                 const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
+                this.currentAudio = new Audio(audioUrl);
                 
-                audio.onended = () => {
+                this.currentAudio.onended = () => {
                     URL.revokeObjectURL(audioUrl);
                     this.isSpeaking = false;
+                    this.currentAudio = null;
                     console.log('OpenAI TTS終了');
                     if (onEnd) onEnd();
                 };
 
-                audio.onerror = (error) => {
+                this.currentAudio.onerror = (error) => {
                     console.error('音声再生エラー:', error);
                     URL.revokeObjectURL(audioUrl);
                     this.isSpeaking = false;
+                    this.currentAudio = null;
                     // エラー時はフォールバック
                     this.speakFallback(text, onEnd);
                 };
 
-                await audio.play();
+                await this.currentAudio.play();
                 return true;
 
             } catch (error) {
@@ -245,7 +244,9 @@ class SpeechManager {
         }
 
         // 既存の読み上げをキャンセル
-        this.stopSpeaking();
+        if (this.synthesis.speaking) {
+            this.synthesis.cancel();
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'ja-JP';
@@ -292,20 +293,16 @@ class SpeechManager {
     stopSpeaking() {
         if (this.synthesis) {
             this.synthesis.cancel();
-            this.isSpeaking = false;
         }
-        
-        // ストリーミングキューをクリア
-        this.audioQueue = [];
-        this.isPlayingQueue = false;
-        this.streamingBuffer = '';
         
         // 再生中の音声を停止
-        if (this.streamingAudioContext) {
-            this.streamingAudioContext.pause();
-            this.streamingAudioContext.currentTime = 0;
-            this.streamingAudioContext = null;
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
+            this.currentAudio = null;
         }
+        
+        this.isSpeaking = false;
     }
 
     /**
@@ -380,162 +377,7 @@ class SpeechManager {
         if (!this.synthesis) return [];
         return this.synthesis.getVoices().filter(voice => voice.lang.startsWith('ja'));
     }
-
-    /**
-     * ストリーミングテキストを追加して音声を生成
-     * ChatGPTアプリのような流暢な会話体験を実現
-     * @param {string} chunk - 新しいテキストチャンク
-     * @param {string} fullText - 累積テキスト
-     * @param {Function} onEnd - 全再生完了時のコールバック
-     */
-    async addStreamingText(chunk, fullText, onEnd = null) {
-        if (!this.useOpenAITTS || !window.aiClient) {
-            return;
-        }
-
-        // ストリーミング開始時の初期化
-        if (!this.streamingProcessedLength) {
-            this.streamingProcessedLength = 0;
-            this.streamingBuffer = '';
-        }
-
-        // 文の区切りを検出（句読点、改行）
-        const sentences = this.splitIntoSentences(fullText);
-        
-        // 既に処理した文を除外
-        const newSentences = sentences.slice(this.streamingProcessedLength);
-        
-        // 新しい完成した文があれば音声を生成
-        if (newSentences.length > 0) {
-            for (const sentence of newSentences) {
-                if (sentence.trim().length > 0) {
-                    console.log('音声生成:', sentence);
-                    await this.generateAndQueueAudio(sentence.trim());
-                    this.streamingProcessedLength++;
-                }
-            }
-        }
-        
-        // ストリーミングが完了した場合
-        if (chunk === null) {
-            console.log('ストリーミングTTS完了。処理済み文数:', this.streamingProcessedLength);
-            // キュー再生が完了するまで待つ
-            await this.waitForQueueCompletion();
-            // リセット
-            this.streamingProcessedLength = 0;
-            this.streamingBuffer = '';
-            if (onEnd) onEnd();
-        }
-    }
-
-    /**
-     * テキストを文に分割
-     * @param {string} text - テキスト
-     * @returns {Array} 文の配列
-     */
-    splitIntoSentences(text) {
-        // 句読点で分割
-        const sentences = [];
-        const sentenceEndings = /([^。！？\n]+[。！？\n])/g;
-        let match;
-        
-        while ((match = sentenceEndings.exec(text)) !== null) {
-            sentences.push(match[1].trim());
-        }
-        
-        return sentences;
-    }
-
-
-    /**
-     * テキストから音声を生成してキューに追加
-     * @param {string} text - 音声化するテキスト
-     */
-    async generateAndQueueAudio(text) {
-        if (!text || text.trim().length === 0) return;
-        
-        try {
-            this.isSpeaking = true;
-            
-            // OpenAI TTS APIで音声を生成
-            const audioBlob = await window.aiClient.textToSpeech(
-                text,
-                this.ttsVoice,
-                this.ttsModel
-            );
-            
-            // キューに追加
-            this.audioQueue.push({
-                blob: audioBlob,
-                text: text
-            });
-            
-            // キュー再生を開始（まだ再生中でない場合）
-            if (!this.isPlayingQueue) {
-                this.playAudioQueue();
-            }
-            
-        } catch (error) {
-            console.error('音声生成エラー:', error);
-            // エラー時はフォールバック
-            this.speakFallback(text, null);
-        }
-    }
-
-    /**
-     * 音声キューを順次再生
-     */
-    async playAudioQueue() {
-        if (this.isPlayingQueue || this.audioQueue.length === 0) {
-            return;
-        }
-        
-        this.isPlayingQueue = true;
-        
-        while (this.audioQueue.length > 0) {
-            const item = this.audioQueue.shift();
-            
-            try {
-                const audioUrl = URL.createObjectURL(item.blob);
-                const audio = new Audio(audioUrl);
-                
-                // 再生完了を待つ
-                await new Promise((resolve, reject) => {
-                    audio.onended = () => {
-                        URL.revokeObjectURL(audioUrl);
-                        resolve();
-                    };
-                    
-                    audio.onerror = (error) => {
-                        URL.revokeObjectURL(audioUrl);
-                        reject(error);
-                    };
-                    
-                    audio.play().catch(reject);
-                });
-                
-                // 次の音声までの短い間（自然な会話フロー）
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-            } catch (error) {
-                console.error('音声再生エラー:', error);
-            }
-        }
-        
-        this.isPlayingQueue = false;
-        this.isSpeaking = false;
-    }
-
-    /**
-     * キュー再生の完了を待つ
-     */
-    async waitForQueueCompletion() {
-        while (this.isPlayingQueue || this.audioQueue.length > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
 }
 
 // グローバルインスタンス
 window.speechManager = new SpeechManager();
-

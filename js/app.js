@@ -576,8 +576,8 @@ class VoiceChatApp {
             const response = await this.ai.sendMessage(
                 this.currentConversation.messages,
                 this.currentCategory,
-                // ストリーミングコールバック
-                async (chunk, accumulated) => {
+                // ストリーミングコールバック（テキスト表示のみ）
+                (chunk, accumulated) => {
                     console.log('ストリーミングチャンク:', chunk);
                     fullResponse = accumulated;
                     
@@ -589,9 +589,6 @@ class VoiceChatApp {
                         // 既存メッセージを更新
                         this.updateStreamingMessage(streamMessageId, accumulated);
                     }
-                    
-                    // ストリーミングTTS: テキストが到着するたびに音声を生成
-                    await this.speech.addStreamingText(chunk, accumulated, null);
                 }
             );
 
@@ -607,10 +604,12 @@ class VoiceChatApp {
                 fullResponse = response;
             }
 
-            // ストリーミングTTSの完了処理（残りのテキストを処理）
-            await this.speech.addStreamingText(null, fullResponse || response, () => {
-                console.log('ストリーミングTTS完了');
-            });
+            // 全テキストが完成してから音声を1回だけ生成
+            const finalText = fullResponse || response;
+            if (finalText && finalText.trim()) {
+                console.log('音声生成開始:', finalText);
+                await this.speech.speak(finalText, null);
+            }
 
         } catch (error) {
             this.hideLoading();
