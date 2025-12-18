@@ -131,11 +131,11 @@ class StorageManager {
         // デフォルト設定
         return {
             apiKey: '',
-            speechRate: 0.9,
+            speechRate: 0.85,     // iPhoneでは少し遅めの方が聞きやすい
             fontSize: 'large',
-            useOpenAITTS: false, // iPhone対応のためWeb Speech APIを使用（デフォルト）
-            ttsVoice: 'nova',    // デフォルト音声
-            ttsModel: 'tts-1'    // 標準モデル
+            useOpenAITTS: true,   // OpenAI TTSを試す（Web Audio API経由）
+            ttsVoice: 'shimmer',  // デフォルト音声（優しい女性の声）
+            ttsModel: 'tts-1'     // 標準モデル（低遅延）
         };
     }
 

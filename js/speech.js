@@ -178,13 +178,14 @@ class SpeechManager {
      * AudioContextを初期化（iOS対応）
      */
     async initAudioContext() {
-        if (this.isAudioContextInitialized) return;
+        if (this.isAudioContextInitialized && this.audioContext) return;
         
         try {
             // AudioContextの初期化（iOS対応）
             const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) {
+            if (AudioContext && !this.audioContext) {
                 this.audioContext = new AudioContext();
+                console.log('AudioContext作成:', this.audioContext.state);
                 
                 // サイレント音声を再生してコンテキストをアンロック（iOS対応）
                 const buffer = this.audioContext.createBuffer(1, 1, 22050);
@@ -192,6 +193,12 @@ class SpeechManager {
                 source.buffer = buffer;
                 source.connect(this.audioContext.destination);
                 source.start(0);
+                
+                // AudioContextをresumeする（iOS対応）
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                    console.log('AudioContext resumed:', this.audioContext.state);
+                }
                 
                 this.isAudioContextInitialized = true;
                 console.log('AudioContext初期化完了（iOS対応）');
@@ -227,50 +234,29 @@ class SpeechManager {
                     this.ttsModel
                 );
 
-                // 音声を再生（iOS対応の方式）
-                const audioUrl = URL.createObjectURL(audioBlob);
-                this.currentAudio = new Audio();
+                // Web Audio APIを使用して再生（iOS対応・音量調整可能）
+                const arrayBuffer = await audioBlob.arrayBuffer();
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
                 
-                // iOS対応: loadイベントを待ってから再生
-                await new Promise((resolve, reject) => {
-                    this.currentAudio.src = audioUrl;
-                    this.currentAudio.load();
-                    
-                    this.currentAudio.oncanplaythrough = () => {
-                        console.log('音声ロード完了');
-                        resolve();
-                    };
-                    
-                    this.currentAudio.onerror = reject;
-                });
+                const source = this.audioContext.createBufferSource();
+                source.buffer = audioBuffer;
                 
-                this.currentAudio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
+                // ゲインノードを作成して音量を増幅
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.value = 2.0;  // 音量を2倍に
+                
+                source.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                source.onended = () => {
                     this.isSpeaking = false;
-                    this.currentAudio = null;
                     console.log('OpenAI TTS終了');
                     if (onEnd) onEnd();
                 };
-
-                this.currentAudio.onerror = (error) => {
-                    console.error('音声再生エラー:', error);
-                    URL.revokeObjectURL(audioUrl);
-                    this.isSpeaking = false;
-                    this.currentAudio = null;
-                    // エラー時はフォールバック
-                    this.speakFallback(text, onEnd);
-                };
-
-                // iOS対応: playの結果を確認
-                try {
-                    await this.currentAudio.play();
-                    console.log('音声再生開始成功');
-                    return true;
-                } catch (playError) {
-                    console.error('音声再生開始エラー:', playError);
-                    // 再生エラーの場合はフォールバック
-                    return this.speakFallback(text, onEnd);
-                }
+                
+                source.start(0);
+                console.log('OpenAI TTS再生開始（Web Audio API）');
+                return true;
 
             } catch (error) {
                 console.error('OpenAI TTSエラー:', error);
@@ -279,7 +265,7 @@ class SpeechManager {
             }
         }
 
-        // Web Speech APIを使用（フォールバック）
+        // Web Speech APIを使用（デフォルト）
         return this.speakFallback(text, onEnd);
     }
 
@@ -305,19 +291,24 @@ class SpeechManager {
             utterance.lang = 'ja-JP';
             utterance.rate = this.speechRate;
             utterance.pitch = 1.0;
-            utterance.volume = 1.0;
+            utterance.volume = 2.0;  // 音量を最大に（1.0より大きく設定可能）
 
-            // 日本語音声を優先的に選択
+            // 日本語音声を優先的に選択（より自然な音声を探す）
             const voices = this.synthesis.getVoices();
-            const japaneseVoice = voices.find(voice => 
-                voice.lang.startsWith('ja') && voice.localService
-            ) || voices.find(voice => 
-                voice.lang.startsWith('ja')
-            );
+            console.log('利用可能な音声:', voices.map(v => `${v.name} (${v.lang})`));
+            
+            // より自然な日本語音声を優先的に選択
+            const japaneseVoice = 
+                voices.find(voice => voice.lang === 'ja-JP' && voice.name.includes('Kyoko')) ||
+                voices.find(voice => voice.lang === 'ja-JP' && voice.name.includes('Otoya')) ||
+                voices.find(voice => voice.lang === 'ja-JP' && !voice.localService) || // クラウド音声を優先
+                voices.find(voice => voice.lang.startsWith('ja') && !voice.localService) ||
+                voices.find(voice => voice.lang === 'ja-JP' && voice.localService) ||
+                voices.find(voice => voice.lang.startsWith('ja'));
             
             if (japaneseVoice) {
                 utterance.voice = japaneseVoice;
-                console.log('使用する音声:', japaneseVoice.name);
+                console.log('使用する音声:', japaneseVoice.name, 'localService:', japaneseVoice.localService);
             } else {
                 console.log('日本語音声が見つかりません。デフォルト音声を使用します。');
             }
