@@ -4,20 +4,27 @@
  */
 class VoiceChatApp {
     constructor() {
-        // マネージャーのインスタンス（初期化確認）
-        if (!window.speechManager) {
-            console.error('speechManagerが初期化されていません');
-        }
-        if (!window.aiClient) {
-            console.error('aiClientが初期化されていません');
-        }
-        if (!window.storageManager) {
-            console.error('storageManagerが初期化されていません');
+        // マネージャーのインスタンス（初期化確認と待機）
+        // スクリプトの読み込み順序を確保するため、少し待つ
+        if (!window.speechManager || !window.aiClient || !window.storageManager) {
+            console.warn('マネージャーが初期化されていません。再試行します...');
+            setTimeout(() => {
+                if (!window.speechManager || !window.aiClient || !window.storageManager) {
+                    console.error('マネージャーの初期化に失敗しました');
+                    alert('アプリの初期化に失敗しました。ページを再読み込みしてください。');
+                    return;
+                }
+            }, 100);
         }
         
         this.speech = window.speechManager;
         this.ai = window.aiClient;
         this.storage = window.storageManager;
+        
+        // 初期化確認
+        if (!this.ai || typeof this.ai.validateApiKeyFormat !== 'function') {
+            console.error('AIクライアントが正しく初期化されていません');
+        }
         
         // 状態管理
         this.currentScreen = 'home';
