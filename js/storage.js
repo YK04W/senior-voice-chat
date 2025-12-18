@@ -97,9 +97,22 @@ class StorageManager {
      * @param {Object} settings - 設定オブジェクト
      */
     saveSettings(settings) {
-        const currentSettings = this.getSettings();
-        const newSettings = { ...currentSettings, ...settings };
-        localStorage.setItem(this.settingsKey, JSON.stringify(newSettings));
+        try {
+            const currentSettings = this.getSettings();
+            const newSettings = { ...currentSettings, ...settings };
+            const jsonString = JSON.stringify(newSettings);
+            localStorage.setItem(this.settingsKey, jsonString);
+            console.log('設定を保存しました:', this.settingsKey, Object.keys(newSettings));
+            
+            // 保存確認
+            const saved = localStorage.getItem(this.settingsKey);
+            if (!saved) {
+                throw new Error('LocalStorageへの保存に失敗しました');
+            }
+        } catch (error) {
+            console.error('設定保存エラー:', error);
+            throw error;
+        }
     }
 
     /**

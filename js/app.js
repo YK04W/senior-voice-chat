@@ -156,9 +156,26 @@ class VoiceChatApp {
             this.showHomeScreen();
         });
 
-        document.getElementById('save-api-key').addEventListener('click', () => {
-            this.saveApiKey();
-        });
+        const saveApiKeyBtn = document.getElementById('save-api-key');
+        if (saveApiKeyBtn) {
+            saveApiKeyBtn.addEventListener('click', () => {
+                console.log('保存ボタンがクリックされました');
+                this.saveApiKey();
+            });
+        } else {
+            console.error('保存ボタンが見つかりません');
+        }
+        
+        // Enterキーでも保存できるように
+        const apiKeyInput = document.getElementById('api-key-input');
+        if (apiKeyInput) {
+            apiKeyInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.saveApiKey();
+                }
+            });
+        }
 
         document.querySelectorAll('.speed-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -752,7 +769,14 @@ class VoiceChatApp {
      */
     async saveApiKey() {
         const input = document.getElementById('api-key-input');
+        if (!input) {
+            console.error('APIキー入力欄が見つかりません');
+            this.showError('APIキー入力欄が見つかりません');
+            return;
+        }
+        
         const apiKey = input.value.trim();
+        console.log('APIキー保存試行:', apiKey ? `${apiKey.substring(0, 7)}...` : '空');
 
         if (!apiKey) {
             this.showError('APIキーを入力してください');
@@ -764,10 +788,26 @@ class VoiceChatApp {
             return;
         }
 
-        // 保存
-        this.storage.saveApiKey(apiKey);
-        this.ai.setApiKey(apiKey);
-        this.showToast('APIキーを保存しました');
+        try {
+            // 保存
+            this.storage.saveApiKey(apiKey);
+            this.ai.setApiKey(apiKey);
+            
+            // 保存確認
+            const savedKey = this.storage.getApiKey();
+            console.log('保存確認:', savedKey ? `${savedKey.substring(0, 7)}...` : '保存失敗');
+            
+            if (savedKey === apiKey) {
+                this.showToast('APIキーを保存しました');
+                // 入力欄をクリア（セキュリティのため）
+                input.value = '';
+            } else {
+                this.showError('APIキーの保存に失敗しました。もう一度お試しください。');
+            }
+        } catch (error) {
+            console.error('APIキー保存エラー:', error);
+            this.showError('APIキーの保存中にエラーが発生しました: ' + error.message);
+        }
     }
 
     /**
