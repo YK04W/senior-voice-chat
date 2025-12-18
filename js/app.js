@@ -122,13 +122,39 @@ class VoiceChatApp {
             this.startNewConversation('general');
         });
 
-        document.getElementById('history-btn').addEventListener('click', () => {
-            this.showHistoryScreen();
-        });
+        const historyBtn = document.getElementById('history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('履歴ボタンがクリックされました');
+                this.showHistoryScreen();
+            });
+            // iPhone対応: touchendイベントも追加
+            historyBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('履歴ボタンがタップされました');
+                this.showHistoryScreen();
+            });
+        }
 
-        document.getElementById('settings-btn').addEventListener('click', () => {
-            this.showSettingsScreen();
-        });
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('設定ボタンがクリックされました');
+                this.showSettingsScreen();
+            });
+            // iPhone対応: touchendイベントも追加
+            settingsBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('設定ボタンがタップされました');
+                this.showSettingsScreen();
+            });
+        }
         
         // デバッグ用: APIキーの状態を確認
         console.log('APIキー状態:', this.storage.getApiKey() ? '設定済み' : '未設定');

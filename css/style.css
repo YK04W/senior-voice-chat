@@ -245,11 +245,19 @@ body {
     color: var(--text-color);
     cursor: pointer;
     transition: all 0.15s;
+    /* iPhone対応 */
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .secondary-btn:active {
     background: var(--background-color);
     transform: scale(0.98);
+}
+
+.secondary-btn:hover {
+    background: var(--background-color);
 }
 
 /* ============================================

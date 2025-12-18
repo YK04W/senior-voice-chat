@@ -296,47 +296,61 @@ class SpeechManager {
             return false;
         }
 
-        // 既存の読み上げをキャンセル
-        if (this.synthesis.speaking) {
-            this.synthesis.cancel();
-        }
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ja-JP';
-        utterance.rate = this.speechRate;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        // 日本語音声を優先的に選択
-        const voices = this.synthesis.getVoices();
-        const japaneseVoice = voices.find(voice => 
-            voice.lang.startsWith('ja') && voice.localService
-        ) || voices.find(voice => 
-            voice.lang.startsWith('ja')
-        );
+        // iPhone対応: 確実にキャンセル
+        this.synthesis.cancel();
         
-        if (japaneseVoice) {
-            utterance.voice = japaneseVoice;
-        }
+        // iPhone対応: 少し待ってから新しい音声を開始
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            utterance.rate = this.speechRate;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
 
-        utterance.onstart = () => {
-            console.log('Web Speech API音声合成開始');
-            this.isSpeaking = true;
-        };
+            // 日本語音声を優先的に選択
+            const voices = this.synthesis.getVoices();
+            const japaneseVoice = voices.find(voice => 
+                voice.lang.startsWith('ja') && voice.localService
+            ) || voices.find(voice => 
+                voice.lang.startsWith('ja')
+            );
+            
+            if (japaneseVoice) {
+                utterance.voice = japaneseVoice;
+                console.log('使用する音声:', japaneseVoice.name);
+            } else {
+                console.log('日本語音声が見つかりません。デフォルト音声を使用します。');
+            }
 
-        utterance.onend = () => {
-            console.log('Web Speech API音声合成終了');
-            this.isSpeaking = false;
-            if (onEnd) onEnd();
-        };
+            utterance.onstart = () => {
+                console.log('Web Speech API音声合成開始');
+                this.isSpeaking = true;
+            };
 
-        utterance.onerror = (event) => {
-            console.error('音声合成エラー:', event.error);
-            this.isSpeaking = false;
-            if (onEnd) onEnd();
-        };
+            utterance.onend = () => {
+                console.log('Web Speech API音声合成終了');
+                this.isSpeaking = false;
+                if (onEnd) onEnd();
+            };
 
-        this.synthesis.speak(utterance);
+            utterance.onerror = (event) => {
+                console.error('音声合成エラー:', event.error);
+                this.isSpeaking = false;
+                if (onEnd) onEnd();
+            };
+
+            // iPhone対応: speakの前にspeakingを確認
+            if (this.synthesis.speaking) {
+                console.warn('まだ音声が再生中です。キャンセルして再試行します。');
+                this.synthesis.cancel();
+                setTimeout(() => {
+                    this.synthesis.speak(utterance);
+                }, 100);
+            } else {
+                this.synthesis.speak(utterance);
+            }
+        }, 100); // iPhone対応: 少し待つ
+
         return true;
     }
 
