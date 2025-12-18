@@ -112,6 +112,9 @@ class VoiceChatApp {
         document.getElementById('settings-btn').addEventListener('click', () => {
             this.showSettingsScreen();
         });
+        
+        // デバッグ用: APIキーの状態を確認
+        console.log('APIキー状態:', this.storage.getApiKey() ? '設定済み' : '未設定');
 
         // カテゴリーボタン
         document.querySelectorAll('.category-btn').forEach(btn => {
@@ -313,12 +316,15 @@ class VoiceChatApp {
      * 新しい会話を開始
      */
     async startNewConversation(category) {
-        // APIキーの確認
-        if (!this.storage.getApiKey()) {
-            this.showError('まず設定画面でAPIキーを入力してください。');
-            this.showSettingsScreen();
+        // APIキーの確認（設定画面に遷移せず、エラーメッセージのみ表示）
+        const apiKey = this.storage.getApiKey();
+        if (!apiKey || apiKey.trim() === '') {
+            this.showError('APIキーが設定されていません。「⚙️ 設定」からAPIキーを入力してください。');
             return;
         }
+        
+        // APIキーをAIクライアントに設定（念のため再設定）
+        this.ai.setApiKey(apiKey);
 
         this.currentCategory = category;
         this.currentConversation = {
@@ -477,6 +483,16 @@ class VoiceChatApp {
      */
     async handleUserInput(text) {
         if (!text.trim()) return;
+
+        // APIキーの確認
+        const apiKey = this.storage.getApiKey();
+        if (!apiKey || apiKey.trim() === '') {
+            this.showError('APIキーが設定されていません。「⚙️ 設定」からAPIキーを入力してください。');
+            return;
+        }
+        
+        // APIキーをAIクライアントに設定（念のため再設定）
+        this.ai.setApiKey(apiKey);
 
         // ユーザーメッセージを追加
         this.addMessage('user', text);
