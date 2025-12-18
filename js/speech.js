@@ -46,7 +46,7 @@ class SpeechManager {
 
         this.recognition = new SpeechRecognition();
         this.recognition.lang = 'ja-JP';
-        this.recognition.continuous = false;      // 一文ずつ処理
+        this.recognition.continuous = true;       // 連続録音（ボタンを押している間続ける）
         this.recognition.interimResults = true;   // リアルタイム表示
         this.recognition.maxAlternatives = 1;
 
@@ -57,17 +57,24 @@ class SpeechManager {
         };
 
         this.recognition.onresult = (event) => {
+            console.log('音声認識イベント:', event);
             let interimTranscript = '';
             let finalTranscript = '';
 
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
+                const isFinal = event.results[i].isFinal;
+                console.log(`結果[${i}]:`, transcript, 'isFinal:', isFinal);
+                
+                if (isFinal) {
                     finalTranscript += transcript;
                 } else {
                     interimTranscript += transcript;
                 }
             }
+
+            console.log('中間結果:', interimTranscript);
+            console.log('最終結果:', finalTranscript);
 
             // 中間結果のコールバック
             if (interimTranscript && this.onInterim) {

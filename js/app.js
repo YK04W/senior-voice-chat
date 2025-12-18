@@ -435,36 +435,64 @@ class VoiceChatApp {
      * 録音を開始
      */
     startRecording() {
+        console.log('録音開始を試行...');
+        
         // 読み上げ中なら停止
         if (this.speech.isSpeaking) {
             this.speech.stopSpeaking();
         }
 
+        // 音声認識が利用可能か確認
+        if (!this.speech.isRecognitionSupported()) {
+            this.showError('このブラウザは音声認識に対応していません。SafariまたはChromeをお使いください。');
+            return;
+        }
+
+        // 最終結果を保持する変数
+        let finalTranscript = '';
+        
         const started = this.speech.startListening(
-            // 最終結果
+            // 最終結果（文が完成した時点で呼ばれる）
             (transcript) => {
-                this.hideInterimTranscript();
-                this.handleUserInput(transcript);
-                this.stopRecording();
+                console.log('音声認識最終結果:', transcript);
+                finalTranscript += transcript + ' ';
+                // 中間表示を更新
+                this.showInterimTranscript(finalTranscript.trim());
             },
             // 中間結果
             (interim) => {
-                this.showInterimTranscript(interim);
+                console.log('音声認識中間結果:', interim);
+                // 最終結果と中間結果を結合して表示
+                const displayText = finalTranscript.trim() + ' ' + interim;
+                this.showInterimTranscript(displayText.trim());
             },
-            // 終了
+            // 終了（録音が停止した時点で処理）
             () => {
-                this.stopRecording();
+                console.log('音声認識が終了しました。最終結果:', finalTranscript.trim());
+                this.hideInterimTranscript();
+                if (finalTranscript && finalTranscript.trim()) {
+                    this.handleUserInput(finalTranscript.trim());
+                } else {
+                    console.log('音声が検出されませんでした');
+                    this.showError('音声が検出されませんでした。もう一度お話しください。');
+                }
+                finalTranscript = ''; // リセット
             },
             // エラー
             (error) => {
+                console.error('音声認識エラー:', error);
                 this.showError(error);
-                this.stopRecording();
+                finalTranscript = ''; // リセット
             }
         );
 
         if (started) {
             this.isRecording = true;
             this.updateRecordButton(true);
+            console.log('録音開始成功');
+        } else {
+            console.error('録音開始失敗');
+            this.showError('録音を開始できませんでした。マイクの権限を確認してください。');
         }
     }
 
@@ -472,10 +500,11 @@ class VoiceChatApp {
      * 録音を停止
      */
     stopRecording() {
+        console.log('録音停止を試行...');
         this.speech.stopListening();
         this.isRecording = false;
         this.updateRecordButton(false);
-        this.hideInterimTranscript();
+        // 中間表示は音声認識のonendで処理されるため、ここでは非表示にしない
     }
 
     /**
@@ -535,6 +564,10 @@ class VoiceChatApp {
         this.showLoading();
 
         try {
+            console.log('AI応答を取得開始...');
+            console.log('会話履歴:', this.currentConversation.messages);
+            console.log('カテゴリー:', this.currentCategory);
+            
             // AI応答を取得（ストリーミング対応）
             let fullResponse = '';
             let streamMessageId = null;
@@ -544,6 +577,7 @@ class VoiceChatApp {
                 this.currentCategory,
                 // ストリーミングコールバック
                 async (chunk, accumulated) => {
+                    console.log('ストリーミングチャンク:', chunk);
                     fullResponse = accumulated;
                     
                     // 最初のチャンクでメッセージを作成
@@ -560,6 +594,7 @@ class VoiceChatApp {
                 }
             );
 
+            console.log('AI応答取得完了:', response);
             this.hideLoading();
 
             // ストリーミングが完了したら最終メッセージを確定

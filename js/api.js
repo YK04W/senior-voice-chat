@@ -95,6 +95,8 @@ class AIClient {
      * @returns {Promise<string>} AI応答
      */
     async sendMessage(messages, category = 'general', onStream = null) {
+        console.log('sendMessage呼び出し:', { category, messagesCount: messages.length, hasStream: !!onStream });
+        
         if (!this.apiKey) {
             throw new Error('APIキーが設定されていません。設定画面からAPIキーを入力してください。');
         }
@@ -110,6 +112,8 @@ class AIClient {
             }))
         ];
 
+        console.log('APIリクエスト準備:', { model: this.model, messagesCount: apiMessages.length });
+
         // ストリーミング対応のパラメータ
         const requestBody = {
             model: this.model,
@@ -121,17 +125,21 @@ class AIClient {
         // ストリーミングが有効な場合
         if (onStream) {
             requestBody.stream = true;
+            console.log('ストリーミングモード有効');
         }
 
         try {
+            console.log('APIリクエスト送信...');
             const response = await fetch(this.endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
+                    'Authorization': `Bearer ${this.apiKey.substring(0, 7)}...`
                 },
                 body: JSON.stringify(requestBody)
             });
+            
+            console.log('APIレスポンス受信:', response.status, response.statusText);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
