@@ -243,7 +243,8 @@ class SpeechManager {
                 
                 // ゲインノードを作成して音量を増幅
                 const gainNode = this.audioContext.createGain();
-                gainNode.gain.value = 2.0;  // 音量を2倍に
+                gainNode.gain.value = this.volumeGain;  // デバイスに応じた音量（iPhoneは4倍、PCは2倍）
+                console.log('音量ゲイン:', gainNode.gain.value);
                 
                 source.connect(gainNode);
                 gainNode.connect(this.audioContext.destination);
@@ -291,7 +292,8 @@ class SpeechManager {
             utterance.lang = 'ja-JP';
             utterance.rate = this.speechRate;
             utterance.pitch = 1.0;
-            utterance.volume = 2.0;  // 音量を最大に（1.0より大きく設定可能）
+            // Web Speech APIは1.0が最大値なので、デバイス検出の意味がない
+            utterance.volume = 1.0;  // 最大音量
 
             // 日本語音声を優先的に選択（より自然な音声を探す）
             const voices = this.synthesis.getVoices();
@@ -434,6 +436,38 @@ class SpeechManager {
     getAvailableVoices() {
         if (!this.synthesis) return [];
         return this.synthesis.getVoices().filter(voice => voice.lang.startsWith('ja'));
+    }
+
+    /**
+     * デバイスを検出
+     * @returns {string} 'ios', 'android', 'pc'
+     */
+    detectDevice() {
+        const ua = navigator.userAgent.toLowerCase();
+        if (/iphone|ipad|ipod/.test(ua)) {
+            return 'ios';
+        } else if (/android/.test(ua)) {
+            return 'android';
+        } else {
+            return 'pc';
+        }
+    }
+
+    /**
+     * 音量ゲインを設定
+     * @param {number} gain - 音量ゲイン（1.0 = 通常、2.0 = 2倍）
+     */
+    setVolumeGain(gain) {
+        this.volumeGain = Math.max(0.5, Math.min(5.0, gain));
+        console.log('音量ゲインを設定:', this.volumeGain);
+    }
+
+    /**
+     * 現在の音量ゲインを取得
+     * @returns {number} 音量ゲイン
+     */
+    getVolumeGain() {
+        return this.volumeGain;
     }
 }
 

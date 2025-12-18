@@ -129,13 +129,18 @@ class StorageManager {
             }
         }
         // デフォルト設定
+        // デバイス検出
+        const ua = navigator.userAgent.toLowerCase();
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+        
         return {
             apiKey: '',
             speechRate: 0.85,     // iPhoneでは少し遅めの方が聞きやすい
             fontSize: 'large',
             useOpenAITTS: true,   // OpenAI TTSを試す（Web Audio API経由）
             ttsVoice: 'shimmer',  // デフォルト音声（優しい女性の声）
-            ttsModel: 'tts-1'     // 標準モデル（低遅延）
+            ttsModel: 'tts-1',    // 標準モデル（低遅延）
+            volumeGain: isIOS ? 4.0 : 2.0  // iPhoneは4倍、PCは2倍
         };
     }
 
@@ -232,7 +237,25 @@ class StorageManager {
      * @returns {string} モデル
      */
     getTTSModel() {
-        return this.getSettings().ttsModel || 'tts-1-hd';
+        return this.getSettings().ttsModel || 'tts-1';
+    }
+
+    /**
+     * 音量ゲインを保存
+     * @param {number} gain - 音量ゲイン（1.0-5.0）
+     */
+    saveVolumeGain(gain) {
+        this.saveSettings({ volumeGain: gain });
+    }
+
+    /**
+     * 音量ゲインを取得
+     * @returns {number} 音量ゲイン
+     */
+    getVolumeGain() {
+        const ua = navigator.userAgent.toLowerCase();
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+        return this.getSettings().volumeGain || (isIOS ? 4.0 : 2.0);
     }
 
     // ========================================

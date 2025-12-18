@@ -80,6 +80,10 @@ class VoiceChatApp {
         const ttsModel = this.storage.getTTSModel();
         this.speech.setTTSModel(ttsModel);
         
+        // 音量設定
+        const volumeGain = this.storage.getVolumeGain();
+        this.speech.setVolumeGain(volumeGain);
+        
         // フォントサイズ
         const fontSize = this.storage.getFontSize();
         this.applyFontSize(fontSize);
@@ -239,6 +243,14 @@ class VoiceChatApp {
             });
         });
 
+        // 音量スライダー
+        const volumeSlider = document.getElementById('volume-slider');
+        if (volumeSlider) {
+            volumeSlider.addEventListener('input', (e) => {
+                this.setVolumeGain(parseFloat(e.target.value));
+            });
+        }
+
         document.getElementById('clear-all-data').addEventListener('click', () => {
             this.clearAllData();
         });
@@ -360,6 +372,17 @@ class VoiceChatApp {
         const engineRadio = document.querySelector(`input[name="tts-engine"][value="${engineValue}"]`);
         if (engineRadio) {
             engineRadio.checked = true;
+        }
+        
+        // 音量スライダーを反映
+        const volumeGain = this.storage.getVolumeGain();
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeValue = document.getElementById('volume-value');
+        if (volumeSlider) {
+            volumeSlider.value = volumeGain;
+        }
+        if (volumeValue) {
+            volumeValue.textContent = `音量: ${volumeGain.toFixed(1)}倍`;
         }
         
         this.switchScreen('settings-screen');
@@ -932,6 +955,20 @@ class VoiceChatApp {
         this.speech.setUseOpenAITTS(useOpenAI);
         const engineName = useOpenAI ? 'OpenAI TTS（PC推奨）' : 'ブラウザ標準（iPhone推奨）';
         this.showToast(`音声エンジンを${engineName}に変更しました`);
+    }
+
+    /**
+     * 音量ゲインを設定
+     */
+    setVolumeGain(gain) {
+        this.storage.saveVolumeGain(gain);
+        this.speech.setVolumeGain(gain);
+        
+        // 音量表示を更新
+        const volumeValue = document.getElementById('volume-value');
+        if (volumeValue) {
+            volumeValue.textContent = `音量: ${gain.toFixed(1)}倍`;
+        }
     }
 
     /**

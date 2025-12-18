@@ -630,6 +630,57 @@ body {
     gap: 4px;
 }
 
+/* 音量コントロール */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border-color);
+    border-radius: 4px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+}
+
+.volume-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+
+.volume-value {
+    font-size: 14px;
+    color: var(--primary-color);
+    font-weight: bold;
+    text-align: center;
+    margin-top: 4px;
+}
+
 .save-btn {
     width: 100%;
     min-height: var(--button-min-height);

@@ -168,9 +168,20 @@
                     <h3>音声速度</h3>
                     <div class="speed-options">
                         <button class="speed-btn" data-speed="0.7">ゆっくり</button>
-                        <button class="speed-btn active" data-speed="0.9">普通</button>
-                        <button class="speed-btn" data-speed="1.1">速い</button>
+                        <button class="speed-btn active" data-speed="0.85">普通</button>
+                        <button class="speed-btn" data-speed="1.0">速い</button>
                     </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>音量</h3>
+                    <p class="settings-hint">音声の音量を調整します</p>
+                    <div class="volume-control">
+                        <span class="volume-label">小</span>
+                        <input type="range" id="volume-slider" min="1" max="5" step="0.5" value="4" class="volume-slider">
+                        <span class="volume-label">大</span>
+                    </div>
+                    <p class="volume-value" id="volume-value">音量: 4.0倍</p>
                 </div>
                 
                 <div class="settings-group">
