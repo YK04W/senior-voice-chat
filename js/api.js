@@ -288,6 +288,62 @@ class AIClient {
     }
 }
 
+    /**
+     * テキストを音声に変換（TTS API）
+     * @param {string} text - 読み上げるテキスト
+     * @param {string} voice - 音声タイプ ('alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer')
+     * @param {string} model - モデル ('tts-1' または 'tts-1-hd')
+     * @returns {Promise<Blob>} 音声データ
+     */
+    async textToSpeech(text, voice = 'nova', model = 'tts-1-hd') {
+        if (!this.apiKey) {
+            throw new Error('APIキーが設定されていません');
+        }
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/audio/speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    input: text,
+                    voice: voice,
+                    speed: 1.0  // 速度（0.25-4.0）
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`TTS APIエラー: ${errorData.error?.message || response.statusText}`);
+            }
+
+            return await response.blob();
+
+        } catch (error) {
+            console.error('TTS API通信エラー:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 利用可能な音声タイプ
+     * @returns {Array} 音声タイプの配列
+     */
+    getAvailableVoices() {
+        return [
+            { id: 'nova', name: 'Nova（女性・明るい）', description: '明るく親しみやすい女性の声' },
+            { id: 'alloy', name: 'Alloy（中性）', description: 'バランスの取れた中性の声' },
+            { id: 'echo', name: 'Echo（男性）', description: '落ち着いた男性の声' },
+            { id: 'fable', name: 'Fable（男性・温かい）', description: '温かみのある男性の声' },
+            { id: 'onyx', name: 'Onyx（男性・深い）', description: '深みのある男性の声' },
+            { id: 'shimmer', name: 'Shimmer（女性・優しい）', description: '優しく柔らかい女性の声' }
+        ];
+    }
+}
+
 // グローバルインスタンス
 window.aiClient = new AIClient();
 

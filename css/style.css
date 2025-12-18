@@ -583,8 +583,43 @@ body {
     transition: border-color 0.2s;
 }
 
-.settings-input:focus {
+.settings-input:focus,
+.settings-select:focus {
     border-color: var(--primary-color);
+}
+
+.settings-select {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: var(--font-size-base);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    outline: none;
+    background: var(--surface-color);
+    color: var(--text-color);
+    transition: border-color 0.2s;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    cursor: pointer;
+    font-size: var(--font-size-base);
+}
+
+.radio-label input[type="radio"] {
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.model-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .save-btn {

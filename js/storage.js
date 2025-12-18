@@ -119,7 +119,10 @@ class StorageManager {
         return {
             apiKey: '',
             speechRate: 0.9,
-            fontSize: 'large'
+            fontSize: 'large',
+            useOpenAITTS: true,  // OpenAI TTSを使用（デフォルト）
+            ttsVoice: 'nova',    // デフォルト音声
+            ttsModel: 'tts-1-hd' // 高品質モデル
         };
     }
 
@@ -169,6 +172,54 @@ class StorageManager {
      */
     getFontSize() {
         return this.getSettings().fontSize || 'large';
+    }
+
+    /**
+     * OpenAI TTS使用設定を保存
+     * @param {boolean} enabled - 有効化するかどうか
+     */
+    saveUseOpenAITTS(enabled) {
+        this.saveSettings({ useOpenAITTS: enabled });
+    }
+
+    /**
+     * OpenAI TTS使用設定を取得
+     * @returns {boolean} 有効化されているかどうか
+     */
+    getUseOpenAITTS() {
+        return this.getSettings().useOpenAITTS !== false; // デフォルトはtrue
+    }
+
+    /**
+     * TTS音声タイプを保存
+     * @param {string} voice - 音声タイプ
+     */
+    saveTTSVoice(voice) {
+        this.saveSettings({ ttsVoice: voice });
+    }
+
+    /**
+     * TTS音声タイプを取得
+     * @returns {string} 音声タイプ
+     */
+    getTTSVoice() {
+        return this.getSettings().ttsVoice || 'nova';
+    }
+
+    /**
+     * TTSモデルを保存
+     * @param {string} model - モデル ('tts-1' または 'tts-1-hd')
+     */
+    saveTTSModel(model) {
+        this.saveSettings({ ttsModel: model });
+    }
+
+    /**
+     * TTSモデルを取得
+     * @returns {string} モデル
+     */
+    getTTSModel() {
+        return this.getSettings().ttsModel || 'tts-1-hd';
     }
 
     // ========================================

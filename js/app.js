@@ -55,6 +55,14 @@ class VoiceChatApp {
         const speechRate = this.storage.getSpeechRate();
         this.speech.setSpeechRate(speechRate);
         
+        // OpenAI TTS設定
+        const useOpenAITTS = this.storage.getUseOpenAITTS();
+        this.speech.setUseOpenAITTS(useOpenAITTS);
+        const ttsVoice = this.storage.getTTSVoice();
+        this.speech.setTTSVoice(ttsVoice);
+        const ttsModel = this.storage.getTTSModel();
+        this.speech.setTTSModel(ttsModel);
+        
         // フォントサイズ
         const fontSize = this.storage.getFontSize();
         this.applyFontSize(fontSize);
@@ -158,6 +166,16 @@ class VoiceChatApp {
         document.querySelectorAll('.size-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.setSizeOption(e.currentTarget);
+            });
+        });
+
+        document.getElementById('tts-voice-select').addEventListener('change', (e) => {
+            this.setTTSVoice(e.target.value);
+        });
+
+        document.querySelectorAll('input[name="tts-model"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.setTTSModel(e.target.value);
             });
         });
 
@@ -276,6 +294,14 @@ class VoiceChatApp {
             btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speechRate);
         });
         
+        // TTS音声タイプを反映
+        const ttsVoice = this.storage.getTTSVoice();
+        document.getElementById('tts-voice-select').value = ttsVoice;
+        
+        // TTSモデルを反映
+        const ttsModel = this.storage.getTTSModel();
+        document.querySelector(`input[name="tts-model"][value="${ttsModel}"]`).checked = true;
+        
         this.switchScreen('settings-screen');
     }
 
@@ -329,8 +355,8 @@ class VoiceChatApp {
         const greeting = this.ai.getGreeting(this.currentCategory);
         this.addMessage('assistant', greeting);
         
-        // 音声で読み上げ
-        this.speech.speak(greeting, null);
+        // 音声で読み上げ（非同期）
+        await this.speech.speak(greeting, null);
     }
 
     /**
@@ -491,8 +517,8 @@ class VoiceChatApp {
                 fullResponse = response;
             }
 
-            // 音声で読み上げ
-            this.speech.speak(fullResponse || response, null);
+            // 音声で読み上げ（非同期）
+            await this.speech.speak(fullResponse || response, null);
 
         } catch (error) {
             this.hideLoading();
@@ -746,6 +772,24 @@ class VoiceChatApp {
         this.storage.saveFontSize(size);
         this.applyFontSize(size);
         this.showToast('文字サイズを変更しました');
+    }
+
+    /**
+     * TTS音声タイプを設定
+     */
+    setTTSVoice(voice) {
+        this.storage.saveTTSVoice(voice);
+        this.speech.setTTSVoice(voice);
+        this.showToast('音声タイプを変更しました');
+    }
+
+    /**
+     * TTSモデルを設定
+     */
+    setTTSModel(model) {
+        this.storage.saveTTSModel(model);
+        this.speech.setTTSModel(model);
+        this.showToast('音声モデルを変更しました');
     }
 
     /**

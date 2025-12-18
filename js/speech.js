@@ -11,6 +11,11 @@ class SpeechManager {
         this.isSpeaking = false;
         this.speechRate = 0.9;
         
+        // OpenAI TTS設定
+        this.useOpenAITTS = true;  // OpenAI TTSを使用（デフォルト）
+        this.ttsVoice = 'nova';    // デフォルト音声（明るい女性の声）
+        this.ttsModel = 'tts-1-hd'; // 高品質モデル
+        
         // コールバック
         this.onResult = null;
         this.onInterim = null;
@@ -161,9 +166,65 @@ class SpeechManager {
      * テキストを音声で読み上げ
      * @param {string} text - 読み上げるテキスト
      * @param {Function} onEnd - 読み上げ完了時のコールバック
+     * @returns {Promise<boolean>} 成功かどうか
+     */
+    async speak(text, onEnd) {
+        // OpenAI TTSを使用する場合
+        if (this.useOpenAITTS && window.aiClient) {
+            try {
+                // 既存の読み上げをキャンセル
+                this.stopSpeaking();
+                
+                this.isSpeaking = true;
+                console.log('OpenAI TTS開始');
+
+                // OpenAI TTS APIで音声を生成
+                const audioBlob = await window.aiClient.textToSpeech(
+                    text,
+                    this.ttsVoice,
+                    this.ttsModel
+                );
+
+                // 音声を再生
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    this.isSpeaking = false;
+                    console.log('OpenAI TTS終了');
+                    if (onEnd) onEnd();
+                };
+
+                audio.onerror = (error) => {
+                    console.error('音声再生エラー:', error);
+                    URL.revokeObjectURL(audioUrl);
+                    this.isSpeaking = false;
+                    // エラー時はフォールバック
+                    this.speakFallback(text, onEnd);
+                };
+
+                await audio.play();
+                return true;
+
+            } catch (error) {
+                console.error('OpenAI TTSエラー:', error);
+                // エラー時はWeb Speech APIにフォールバック
+                return this.speakFallback(text, onEnd);
+            }
+        }
+
+        // Web Speech APIを使用（フォールバック）
+        return this.speakFallback(text, onEnd);
+    }
+
+    /**
+     * Web Speech APIを使用した読み上げ（フォールバック）
+     * @param {string} text - 読み上げるテキスト
+     * @param {Function} onEnd - 読み上げ完了時のコールバック
      * @returns {boolean} 成功かどうか
      */
-    speak(text, onEnd) {
+    speakFallback(text, onEnd) {
         if (!this.synthesis) {
             console.error('音声合成が利用できません');
             if (onEnd) onEnd();
@@ -175,7 +236,7 @@ class SpeechManager {
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'ja-JP';
-        utterance.rate = this.speechRate;  // 少しゆっくり
+        utterance.rate = this.speechRate;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
@@ -192,12 +253,12 @@ class SpeechManager {
         }
 
         utterance.onstart = () => {
-            console.log('音声合成開始');
+            console.log('Web Speech API音声合成開始');
             this.isSpeaking = true;
         };
 
         utterance.onend = () => {
-            console.log('音声合成終了');
+            console.log('Web Speech API音声合成終了');
             this.isSpeaking = false;
             if (onEnd) onEnd();
         };
@@ -228,6 +289,30 @@ class SpeechManager {
      */
     setSpeechRate(rate) {
         this.speechRate = Math.max(0.5, Math.min(2.0, rate));
+    }
+
+    /**
+     * OpenAI TTSの使用を有効/無効化
+     * @param {boolean} enabled - 有効化するかどうか
+     */
+    setUseOpenAITTS(enabled) {
+        this.useOpenAITTS = enabled;
+    }
+
+    /**
+     * TTS音声タイプを設定
+     * @param {string} voice - 音声タイプ ('nova', 'alloy', 'echo', 'fable', 'onyx', 'shimmer')
+     */
+    setTTSVoice(voice) {
+        this.ttsVoice = voice;
+    }
+
+    /**
+     * TTSモデルを設定
+     * @param {string} model - モデル ('tts-1' または 'tts-1-hd')
+     */
+    setTTSModel(model) {
+        this.ttsModel = model;
     }
 
     /**
