@@ -350,6 +350,9 @@ class VoiceChatApp {
      * 新しい会話を開始
      */
     async startNewConversation(category) {
+        // AudioContextの初期化（iOS対応）
+        await this.speech.initAudioContext();
+        
         // APIキーの確認（設定画面に遷移せず、エラーメッセージのみ表示）
         const apiKey = this.storage.getApiKey();
         if (!apiKey || apiKey.trim() === '') {
@@ -440,8 +443,11 @@ class VoiceChatApp {
     /**
      * 音声入力を開始
      */
-    startRecording() {
+    async startRecording() {
         console.log('音声入力開始...');
+        
+        // AudioContextの初期化（iOS対応）
+        await this.speech.initAudioContext();
         
         // 読み上げ中なら停止
         if (this.speech.isSpeaking) {

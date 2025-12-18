@@ -18,6 +18,8 @@ class SpeechManager {
         
         // 音声再生用
         this.currentAudio = null;
+        this.audioContext = null;
+        this.isAudioContextInitialized = false;
         
         // コールバック
         this.onResult = null;
@@ -173,12 +175,42 @@ class SpeechManager {
     }
 
     /**
+     * AudioContextを初期化（iOS対応）
+     */
+    async initAudioContext() {
+        if (this.isAudioContextInitialized) return;
+        
+        try {
+            // AudioContextの初期化（iOS対応）
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                this.audioContext = new AudioContext();
+                
+                // サイレント音声を再生してコンテキストをアンロック（iOS対応）
+                const buffer = this.audioContext.createBuffer(1, 1, 22050);
+                const source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.audioContext.destination);
+                source.start(0);
+                
+                this.isAudioContextInitialized = true;
+                console.log('AudioContext初期化完了（iOS対応）');
+            }
+        } catch (error) {
+            console.error('AudioContext初期化エラー:', error);
+        }
+    }
+
+    /**
      * テキストを音声で読み上げ
      * @param {string} text - 読み上げるテキスト
      * @param {Function} onEnd - 読み上げ完了時のコールバック
      * @returns {Promise<boolean>} 成功かどうか
      */
     async speak(text, onEnd) {
+        // AudioContextの初期化（iOS対応）
+        await this.initAudioContext();
+        
         // OpenAI TTSを使用する場合
         if (this.useOpenAITTS && window.aiClient) {
             try {
@@ -195,9 +227,22 @@ class SpeechManager {
                     this.ttsModel
                 );
 
-                // 音声を再生
+                // 音声を再生（iOS対応の方式）
                 const audioUrl = URL.createObjectURL(audioBlob);
-                this.currentAudio = new Audio(audioUrl);
+                this.currentAudio = new Audio();
+                
+                // iOS対応: loadイベントを待ってから再生
+                await new Promise((resolve, reject) => {
+                    this.currentAudio.src = audioUrl;
+                    this.currentAudio.load();
+                    
+                    this.currentAudio.oncanplaythrough = () => {
+                        console.log('音声ロード完了');
+                        resolve();
+                    };
+                    
+                    this.currentAudio.onerror = reject;
+                });
                 
                 this.currentAudio.onended = () => {
                     URL.revokeObjectURL(audioUrl);
@@ -216,8 +261,16 @@ class SpeechManager {
                     this.speakFallback(text, onEnd);
                 };
 
-                await this.currentAudio.play();
-                return true;
+                // iOS対応: playの結果を確認
+                try {
+                    await this.currentAudio.play();
+                    console.log('音声再生開始成功');
+                    return true;
+                } catch (playError) {
+                    console.error('音声再生開始エラー:', playError);
+                    // 再生エラーの場合はフォールバック
+                    return this.speakFallback(text, onEnd);
+                }
 
             } catch (error) {
                 console.error('OpenAI TTSエラー:', error);
