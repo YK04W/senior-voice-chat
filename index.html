@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シニアおしゃべりAI</title>
+    
+    <!-- PWA対応 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AIおしゃべり">
+    <meta name="theme-color" content="#4A90E2">
+    
+    <!-- ファビコン -->
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ホーム画面 -->
+        <div id="home-screen" class="screen active">
+            <div class="home-container">
+                <div class="logo-section">
+                    <div class="logo-icon">🗣️</div>
+                    <h1>シニアおしゃべりAI</h1>
+                    <p class="subtitle">話しかけるだけで会話できます</p>
+                </div>
+                
+                <div class="main-actions">
+                    <button id="start-chat" class="main-btn">
+                        <span class="btn-icon">🎤</span>
+                        <span class="btn-text">話しかける</span>
+                    </button>
+                </div>
+                
+                <div class="category-section">
+                    <p class="section-title">話題を選ぶ</p>
+                    <div class="category-grid">
+                        <button class="category-btn" data-category="天気">
+                            <span class="cat-icon">☀️</span>
+                            <span class="cat-text">今日の天気</span>
+                        </button>
+                        <button class="category-btn" data-category="健康">
+                            <span class="cat-icon">🏥</span>
+                            <span class="cat-text">健康について</span>
+                        </button>
+                        <button class="category-btn" data-category="家族">
+                            <span class="cat-icon">👨‍👩‍👧‍👦</span>
+                            <span class="cat-text">家族の話</span>
+                        </button>
+                        <button class="category-btn" data-category="趣味">
+                            <span class="cat-icon">📺</span>
+                            <span class="cat-text">趣味の話</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="secondary-actions">
+                    <button id="history-btn" class="secondary-btn">
+                        <span class="btn-icon">📁</span>
+                        <span class="btn-text">過去の会話</span>
+                    </button>
+                    <button id="settings-btn" class="secondary-btn">
+                        <span class="btn-icon">⚙️</span>
+                        <span class="btn-text">設定</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 会話画面 -->
+        <div id="chat-screen" class="screen">
+            <div id="chat-header">
+                <button id="back-btn" class="header-btn">
+                    <span>← 戻る</span>
+                </button>
+                <div class="chat-title">
+                    <span id="current-category">おしゃべり中</span>
+                </div>
+                <button id="end-chat-btn" class="header-btn end-btn">
+                    <span>終了</span>
+                </button>
+            </div>
+            
+            <div id="chat-messages">
+                <!-- メッセージがここに追加される -->
+            </div>
+            
+            <div id="interim-display" class="interim-container hidden">
+                <p id="interim-text">聞き取り中...</p>
+            </div>
+            
+            <div id="chat-input">
+                <button id="record-btn" class="record-btn">
+                    <div class="record-icon">🎤</div>
+                    <span class="record-text">タップして話す</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 履歴画面 -->
+        <div id="history-screen" class="screen">
+            <div id="history-header">
+                <button id="history-back-btn" class="header-btn">
+                    <span>← 戻る</span>
+                </button>
+                <div class="history-title">
+                    <span>📁 過去の会話</span>
+                </div>
+                <div class="header-spacer"></div>
+            </div>
+            
+            <div id="history-list">
+                <!-- 履歴リストがここに追加される -->
+            </div>
+            
+            <div id="no-history" class="no-history hidden">
+                <div class="no-history-icon">💬</div>
+                <p>まだ会話履歴がありません</p>
+                <p class="hint">「話しかける」ボタンから<br>会話を始めてみましょう</p>
+            </div>
+        </div>
+
+        <!-- 履歴詳細画面 -->
+        <div id="history-detail-screen" class="screen">
+            <div id="detail-header">
+                <button id="detail-back-btn" class="header-btn">
+                    <span>← 戻る</span>
+                </button>
+                <div class="detail-title">
+                    <span id="detail-date">会話詳細</span>
+                </div>
+                <button id="delete-conv-btn" class="header-btn delete-btn">
+                    <span>🗑️</span>
+                </button>
+            </div>
+            
+            <div id="detail-messages">
+                <!-- 履歴の会話内容がここに表示される -->
+            </div>
+        </div>
+
+        <!-- 設定画面 -->
+        <div id="settings-screen" class="screen">
+            <div id="settings-header">
+                <button id="settings-back-btn" class="header-btn">
+                    <span>← 戻る</span>
+                </button>
+                <div class="settings-title">
+                    <span>⚙️ 設定</span>
+                </div>
+                <div class="header-spacer"></div>
+            </div>
+            
+            <div class="settings-content">
+                <div class="settings-group">
+                    <h3>APIキー設定</h3>
+                    <p class="settings-hint">OpenAI APIキーを入力してください</p>
+                    <input type="password" id="api-key-input" placeholder="sk-..." class="settings-input">
+                    <button id="save-api-key" class="save-btn">保存する</button>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>音声速度</h3>
+                    <div class="speed-options">
+                        <button class="speed-btn" data-speed="0.7">ゆっくり</button>
+                        <button class="speed-btn active" data-speed="0.9">普通</button>
+                        <button class="speed-btn" data-speed="1.1">速い</button>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>文字サイズ</h3>
+                    <div class="size-options">
+                        <button class="size-btn" data-size="medium">普通</button>
+                        <button class="size-btn active" data-size="large">大きい</button>
+                        <button class="size-btn" data-size="xlarge">特大</button>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>データ管理</h3>
+                    <button id="clear-all-data" class="danger-btn">全ての会話を削除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading-overlay" class="hidden">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>AIが考えています...</p>
+            </div>
+        </div>
+
+        <!-- エラー表示 -->
+        <div id="error-toast" class="toast hidden">
+            <p id="error-message"></p>
+        </div>
+
+        <!-- マイク権限リクエスト -->
+        <div id="permission-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-icon">🎤</div>
+                <h2>マイクの使用許可</h2>
+                <p>音声で会話するために<br>マイクの使用を許可してください</p>
+                <button id="grant-permission" class="main-btn">
+                    <span class="btn-text">許可する</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/speech.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+
