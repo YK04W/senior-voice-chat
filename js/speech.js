@@ -215,17 +215,19 @@ class SpeechManager {
      * @returns {Promise<boolean>} 成功かどうか
      */
     async speak(text, onEnd) {
+        console.log('speak呼び出し:', { useOpenAITTS: this.useOpenAITTS, volumeGain: this.volumeGain });
+        
         // AudioContextの初期化（iOS対応）
         await this.initAudioContext();
         
         // OpenAI TTSを使用する場合
-        if (this.useOpenAITTS && window.aiClient) {
+        if (this.useOpenAITTS && window.aiClient && window.aiClient.apiKey) {
             try {
                 // 既存の読み上げをキャンセル
                 this.stopSpeaking();
                 
                 this.isSpeaking = true;
-                console.log('OpenAI TTS開始:', text);
+                console.log('OpenAI TTS開始:', text, '音量ゲイン:', this.volumeGain);
 
                 // OpenAI TTS APIで音声を生成
                 const audioBlob = await window.aiClient.textToSpeech(
@@ -233,6 +235,12 @@ class SpeechManager {
                     this.ttsVoice,
                     this.ttsModel
                 );
+
+                // AudioContextが初期化されているか確認
+                if (!this.audioContext) {
+                    console.error('AudioContextが初期化されていません');
+                    return this.speakFallback(text, onEnd);
+                }
 
                 // Web Audio APIを使用して再生（iOS対応・音量調整可能）
                 const arrayBuffer = await audioBlob.arrayBuffer();
@@ -243,8 +251,9 @@ class SpeechManager {
                 
                 // ゲインノードを作成して音量を増幅
                 const gainNode = this.audioContext.createGain();
-                gainNode.gain.value = this.volumeGain;  // デバイスに応じた音量（iPhoneは4倍、PCは2倍）
-                console.log('音量ゲイン:', gainNode.gain.value);
+                const effectiveGain = this.volumeGain || 2.0;  // デフォルトは2.0
+                gainNode.gain.value = effectiveGain;
+                console.log('実際の音量ゲイン:', gainNode.gain.value);
                 
                 source.connect(gainNode);
                 gainNode.connect(this.audioContext.destination);
@@ -256,7 +265,7 @@ class SpeechManager {
                 };
                 
                 source.start(0);
-                console.log('OpenAI TTS再生開始（Web Audio API）');
+                console.log('OpenAI TTS再生開始（Web Audio API、音量:', effectiveGain, '倍）');
                 return true;
 
             } catch (error) {
@@ -267,6 +276,7 @@ class SpeechManager {
         }
 
         // Web Speech APIを使用（デフォルト）
+        console.log('Web Speech APIを使用');
         return this.speakFallback(text, onEnd);
     }
 

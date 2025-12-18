@@ -961,6 +961,7 @@ class VoiceChatApp {
      * 音量ゲインを設定
      */
     setVolumeGain(gain) {
+        console.log('音量ゲインを設定:', gain);
         this.storage.saveVolumeGain(gain);
         this.speech.setVolumeGain(gain);
         
@@ -968,6 +969,11 @@ class VoiceChatApp {
         const volumeValue = document.getElementById('volume-value');
         if (volumeValue) {
             volumeValue.textContent = `音量: ${gain.toFixed(1)}倍`;
+        }
+        
+        // 確認メッセージ（音量変更時のみ、初期読み込み時は表示しない）
+        if (this.currentScreen === 'settings-screen') {
+            this.showToast(`音量を${gain.toFixed(1)}倍に変更しました`);
         }
     }
 
