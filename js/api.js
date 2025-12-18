@@ -286,7 +286,6 @@ class AIClient {
             return false;
         }
     }
-}
 
     /**
      * テキストを音声に変換（TTS API）

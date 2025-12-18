@@ -4,7 +4,17 @@
  */
 class VoiceChatApp {
     constructor() {
-        // マネージャーのインスタンス
+        // マネージャーのインスタンス（初期化確認）
+        if (!window.speechManager) {
+            console.error('speechManagerが初期化されていません');
+        }
+        if (!window.aiClient) {
+            console.error('aiClientが初期化されていません');
+        }
+        if (!window.storageManager) {
+            console.error('storageManagerが初期化されていません');
+        }
+        
         this.speech = window.speechManager;
         this.ai = window.aiClient;
         this.storage = window.storageManager;
@@ -783,6 +793,13 @@ class VoiceChatApp {
             return;
         }
 
+        // AIクライアントの存在確認
+        if (!this.ai || !this.ai.validateApiKeyFormat) {
+            console.error('AIクライアントが初期化されていません');
+            this.showError('アプリの初期化に失敗しました。ページを再読み込みしてください。');
+            return;
+        }
+        
         if (!this.ai.validateApiKeyFormat(apiKey)) {
             this.showError('APIキーの形式が正しくありません。sk-で始まるキーを入力してください。');
             return;
