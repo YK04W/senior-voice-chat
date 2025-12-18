@@ -46,7 +46,7 @@ class SpeechManager {
 
         this.recognition = new SpeechRecognition();
         this.recognition.lang = 'ja-JP';
-        this.recognition.continuous = true;       // 連続録音（ボタンを押している間続ける）
+        this.recognition.continuous = false;      // 一発で認識
         this.recognition.interimResults = true;   // リアルタイム表示
         this.recognition.maxAlternatives = 1;
 

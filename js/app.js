@@ -393,7 +393,16 @@ class VoiceChatApp {
      */
     async addAIGreeting() {
         const greeting = this.ai.getGreeting(this.currentCategory);
-        this.addMessage('assistant', greeting);
+        
+        // メッセージを追加（会話履歴に保存）
+        const message = {
+            role: 'assistant',
+            content: greeting,
+            timestamp: new Date().toISOString()
+        };
+        this.currentConversation.messages.push(message);
+        this.displayMessage(message);
+        this.storage.saveConversation(this.currentConversation);
         
         // 音声で読み上げ（非同期）
         await this.speech.speak(greeting, null);
@@ -421,21 +430,18 @@ class VoiceChatApp {
     }
 
     /**
-     * 録音のトグル
+     * 音声入力を開始
      */
     toggleRecording() {
-        if (this.isRecording) {
-            this.stopRecording();
-        } else {
-            this.startRecording();
-        }
+        // 常に音声入力を開始（録音という概念をなくす）
+        this.startRecording();
     }
 
     /**
-     * 録音を開始
+     * 音声入力を開始
      */
     startRecording() {
-        console.log('録音開始を試行...');
+        console.log('音声入力開始...');
         
         // 読み上げ中なら停止
         if (this.speech.isSpeaking) {
@@ -448,51 +454,46 @@ class VoiceChatApp {
             return;
         }
 
-        // 最終結果を保持する変数
-        let finalTranscript = '';
-        
         const started = this.speech.startListening(
-            // 最終結果（文が完成した時点で呼ばれる）
+            // 最終結果
             (transcript) => {
-                console.log('音声認識最終結果:', transcript);
-                finalTranscript += transcript + ' ';
-                // 中間表示を更新
-                this.showInterimTranscript(finalTranscript.trim());
+                console.log('音声認識結果:', transcript);
+                this.hideInterimTranscript();
+                this.isRecording = false;
+                this.updateRecordButton(false);
+                
+                if (transcript && transcript.trim()) {
+                    this.handleUserInput(transcript);
+                }
             },
             // 中間結果
             (interim) => {
-                console.log('音声認識中間結果:', interim);
-                // 最終結果と中間結果を結合して表示
-                const displayText = finalTranscript.trim() + ' ' + interim;
-                this.showInterimTranscript(displayText.trim());
+                console.log('聞き取り中:', interim);
+                this.showInterimTranscript(interim);
             },
-            // 終了（録音が停止した時点で処理）
+            // 終了
             () => {
-                console.log('音声認識が終了しました。最終結果:', finalTranscript.trim());
+                console.log('音声認識終了');
+                this.isRecording = false;
+                this.updateRecordButton(false);
                 this.hideInterimTranscript();
-                if (finalTranscript && finalTranscript.trim()) {
-                    this.handleUserInput(finalTranscript.trim());
-                } else {
-                    console.log('音声が検出されませんでした');
-                    this.showError('音声が検出されませんでした。もう一度お話しください。');
-                }
-                finalTranscript = ''; // リセット
             },
             // エラー
             (error) => {
                 console.error('音声認識エラー:', error);
-                this.showError(error);
-                finalTranscript = ''; // リセット
+                this.isRecording = false;
+                this.updateRecordButton(false);
+                this.hideInterimTranscript();
+                if (error !== 'ユーザーによる中断') {
+                    this.showError(error);
+                }
             }
         );
 
         if (started) {
             this.isRecording = true;
             this.updateRecordButton(true);
-            console.log('録音開始成功');
-        } else {
-            console.error('録音開始失敗');
-            this.showError('録音を開始できませんでした。マイクの権限を確認してください。');
+            console.log('音声入力開始');
         }
     }
 
@@ -508,15 +509,15 @@ class VoiceChatApp {
     }
 
     /**
-     * 録音ボタンの状態を更新
+     * 音声入力ボタンの状態を更新
      */
-    updateRecordButton(isRecording) {
+    updateRecordButton(isListening) {
         const btn = document.getElementById('record-btn');
         const text = btn.querySelector('.record-text');
         
-        if (isRecording) {
+        if (isListening) {
             btn.classList.add('recording');
-            text.textContent = '🔴 録音中...タップで停止';
+            text.textContent = '聞いています...';
         } else {
             btn.classList.remove('recording');
             text.textContent = 'タップして話す';

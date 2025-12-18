@@ -134,7 +134,7 @@ class AIClient {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey.substring(0, 7)}...`
+                    'Authorization': `Bearer ${this.apiKey}`
                 },
                 body: JSON.stringify(requestBody)
             });
