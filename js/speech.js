@@ -393,51 +393,59 @@ class SpeechManager {
             return;
         }
 
-        this.streamingBuffer = fullText;
-        
+        // ストリーミング開始時の初期化
+        if (!this.streamingProcessedLength) {
+            this.streamingProcessedLength = 0;
+            this.streamingBuffer = '';
+        }
+
         // 文の区切りを検出（句読点、改行）
-        const lastSentenceEnd = this.findLastSentenceEnd(fullText);
+        const sentences = this.splitIntoSentences(fullText);
         
-        // 新しい文が完成した場合、音声を生成
-        if (lastSentenceEnd > 0 && lastSentenceEnd < fullText.length) {
-            const sentence = fullText.substring(0, lastSentenceEnd + 1).trim();
-            const remaining = fullText.substring(lastSentenceEnd + 1);
-            
-            if (sentence.length > 0) {
-                // 音声を生成してキューに追加
-                await this.generateAndQueueAudio(sentence);
-                // バッファを更新
-                this.streamingBuffer = remaining;
+        // 既に処理した文を除外
+        const newSentences = sentences.slice(this.streamingProcessedLength);
+        
+        // 新しい完成した文があれば音声を生成
+        if (newSentences.length > 0) {
+            for (const sentence of newSentences) {
+                if (sentence.trim().length > 0) {
+                    console.log('音声生成:', sentence);
+                    await this.generateAndQueueAudio(sentence.trim());
+                    this.streamingProcessedLength++;
+                }
             }
         }
         
-        // ストリーミングが完了した場合、残りのテキストを処理
-        if (onEnd && chunk === null) {
-            if (this.streamingBuffer.trim().length > 0) {
-                await this.generateAndQueueAudio(this.streamingBuffer.trim());
-            }
+        // ストリーミングが完了した場合
+        if (chunk === null) {
+            console.log('ストリーミングTTS完了。処理済み文数:', this.streamingProcessedLength);
             // キュー再生が完了するまで待つ
             await this.waitForQueueCompletion();
+            // リセット
+            this.streamingProcessedLength = 0;
+            this.streamingBuffer = '';
             if (onEnd) onEnd();
         }
     }
 
     /**
-     * 最後の文の終わりを見つける
+     * テキストを文に分割
      * @param {string} text - テキスト
-     * @returns {number} 最後の文の終わりの位置
+     * @returns {Array} 文の配列
      */
-    findLastSentenceEnd(text) {
-        const sentenceEndings = /[。！？\n]/g;
-        let lastIndex = -1;
+    splitIntoSentences(text) {
+        // 句読点で分割
+        const sentences = [];
+        const sentenceEndings = /([^。！？\n]+[。！？\n])/g;
         let match;
         
         while ((match = sentenceEndings.exec(text)) !== null) {
-            lastIndex = match.index;
+            sentences.push(match[1].trim());
         }
         
-        return lastIndex;
+        return sentences;
     }
+
 
     /**
      * テキストから音声を生成してキューに追加
