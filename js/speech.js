@@ -12,9 +12,9 @@ class SpeechManager {
         this.speechRate = 0.9;
         
         // OpenAI TTS設定
-        this.useOpenAITTS = true;  // OpenAI TTSを使用（デフォルト）
-        this.ttsVoice = 'nova';    // デフォルト音声（明るい女性の声）
-        this.ttsModel = 'tts-1';   // 標準モデル（低遅延）
+        this.useOpenAITTS = false;  // iPhone対応のためWeb Speech APIを使用（デフォルト）
+        this.ttsVoice = 'nova';     // デフォルト音声（明るい女性の声）
+        this.ttsModel = 'tts-1';    // 標準モデル（低遅延）
         
         // 音声再生用
         this.currentAudio = null;

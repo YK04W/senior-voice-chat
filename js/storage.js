@@ -133,9 +133,9 @@ class StorageManager {
             apiKey: '',
             speechRate: 0.9,
             fontSize: 'large',
-            useOpenAITTS: true,  // OpenAI TTSを使用（デフォルト）
+            useOpenAITTS: false, // iPhone対応のためWeb Speech APIを使用（デフォルト）
             ttsVoice: 'nova',    // デフォルト音声
-            ttsModel: 'tts-1-hd' // 高品質モデル
+            ttsModel: 'tts-1'    // 標準モデル
         };
     }
 

@@ -206,13 +206,10 @@ class VoiceChatApp {
             });
         });
 
-        document.getElementById('tts-voice-select').addEventListener('change', (e) => {
-            this.setTTSVoice(e.target.value);
-        });
-
-        document.querySelectorAll('input[name="tts-model"]').forEach(radio => {
+        document.querySelectorAll('input[name="tts-engine"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                this.setTTSModel(e.target.value);
+                const useOpenAI = e.target.value === 'openai';
+                this.setTTSEngine(useOpenAI);
             });
         });
 
@@ -331,13 +328,13 @@ class VoiceChatApp {
             btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speechRate);
         });
         
-        // TTS音声タイプを反映
-        const ttsVoice = this.storage.getTTSVoice();
-        document.getElementById('tts-voice-select').value = ttsVoice;
-        
-        // TTSモデルを反映
-        const ttsModel = this.storage.getTTSModel();
-        document.querySelector(`input[name="tts-model"][value="${ttsModel}"]`).checked = true;
+        // TTS音声エンジンを反映
+        const useOpenAITTS = this.storage.getUseOpenAITTS();
+        const engineValue = useOpenAITTS ? 'openai' : 'web-speech';
+        const engineRadio = document.querySelector(`input[name="tts-engine"][value="${engineValue}"]`);
+        if (engineRadio) {
+            engineRadio.checked = true;
+        }
         
         this.switchScreen('settings-screen');
     }
@@ -902,21 +899,13 @@ class VoiceChatApp {
     }
 
     /**
-     * TTS音声タイプを設定
+     * TTS音声エンジンを設定
      */
-    setTTSVoice(voice) {
-        this.storage.saveTTSVoice(voice);
-        this.speech.setTTSVoice(voice);
-        this.showToast('音声タイプを変更しました');
-    }
-
-    /**
-     * TTSモデルを設定
-     */
-    setTTSModel(model) {
-        this.storage.saveTTSModel(model);
-        this.speech.setTTSModel(model);
-        this.showToast('音声モデルを変更しました');
+    setTTSEngine(useOpenAI) {
+        this.storage.saveUseOpenAITTS(useOpenAI);
+        this.speech.setUseOpenAITTS(useOpenAI);
+        const engineName = useOpenAI ? 'OpenAI TTS（PC推奨）' : 'ブラウザ標準（iPhone推奨）';
+        this.showToast(`音声エンジンを${engineName}に変更しました`);
     }
 
     /**

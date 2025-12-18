@@ -174,24 +174,16 @@
                 </div>
                 
                 <div class="settings-group">
-                    <h3>音声タイプ</h3>
-                    <p class="settings-hint">自然な人間の声で読み上げます</p>
-                    <select id="tts-voice-select" class="settings-select">
-                        <option value="nova">Nova（女性・明るい）</option>
-                        <option value="shimmer">Shimmer（女性・優しい）</option>
-                        <option value="alloy">Alloy（中性）</option>
-                        <option value="echo">Echo（男性）</option>
-                        <option value="fable">Fable（男性・温かい）</option>
-                        <option value="onyx">Onyx（男性・深い）</option>
-                    </select>
-                    <div class="model-options" style="margin-top: 12px;">
+                    <h3>音声エンジン</h3>
+                    <p class="settings-hint">iPhoneでは「ブラウザ標準」を推奨</p>
+                    <div class="model-options">
                         <label class="radio-label">
-                            <input type="radio" name="tts-model" value="tts-1-hd" checked>
-                            <span>高品質（tts-1-hd）</span>
+                            <input type="radio" name="tts-engine" value="web-speech" checked id="tts-web-speech">
+                            <span>ブラウザ標準（推奨）</span>
                         </label>
                         <label class="radio-label">
-                            <input type="radio" name="tts-model" value="tts-1">
-                            <span>標準（tts-1）</span>
+                            <input type="radio" name="tts-engine" value="openai" id="tts-openai">
+                            <span>OpenAI TTS（PC推奨）</span>
                         </label>
                     </div>
                 </div>
