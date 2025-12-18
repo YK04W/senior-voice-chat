@@ -16,6 +16,12 @@ class SpeechManager {
         this.ttsVoice = 'nova';    // デフォルト音声（明るい女性の声）
         this.ttsModel = 'tts-1-hd'; // 高品質モデル
         
+        // ストリーミングTTS用のキュー
+        this.audioQueue = [];
+        this.isPlayingQueue = false;
+        this.streamingBuffer = '';
+        this.streamingAudioContext = null;
+        
         // コールバック
         this.onResult = null;
         this.onInterim = null;
@@ -281,6 +287,18 @@ class SpeechManager {
             this.synthesis.cancel();
             this.isSpeaking = false;
         }
+        
+        // ストリーミングキューをクリア
+        this.audioQueue = [];
+        this.isPlayingQueue = false;
+        this.streamingBuffer = '';
+        
+        // 再生中の音声を停止
+        if (this.streamingAudioContext) {
+            this.streamingAudioContext.pause();
+            this.streamingAudioContext.currentTime = 0;
+            this.streamingAudioContext = null;
+        }
     }
 
     /**
@@ -354,6 +372,152 @@ class SpeechManager {
     getAvailableVoices() {
         if (!this.synthesis) return [];
         return this.synthesis.getVoices().filter(voice => voice.lang.startsWith('ja'));
+    }
+
+    /**
+     * ストリーミングテキストを追加して音声を生成
+     * ChatGPTアプリのような流暢な会話体験を実現
+     * @param {string} chunk - 新しいテキストチャンク
+     * @param {string} fullText - 累積テキスト
+     * @param {Function} onEnd - 全再生完了時のコールバック
+     */
+    async addStreamingText(chunk, fullText, onEnd = null) {
+        if (!this.useOpenAITTS || !window.aiClient) {
+            return;
+        }
+
+        this.streamingBuffer = fullText;
+        
+        // 文の区切りを検出（句読点、改行）
+        const lastSentenceEnd = this.findLastSentenceEnd(fullText);
+        
+        // 新しい文が完成した場合、音声を生成
+        if (lastSentenceEnd > 0 && lastSentenceEnd < fullText.length) {
+            const sentence = fullText.substring(0, lastSentenceEnd + 1).trim();
+            const remaining = fullText.substring(lastSentenceEnd + 1);
+            
+            if (sentence.length > 0) {
+                // 音声を生成してキューに追加
+                await this.generateAndQueueAudio(sentence);
+                // バッファを更新
+                this.streamingBuffer = remaining;
+            }
+        }
+        
+        // ストリーミングが完了した場合、残りのテキストを処理
+        if (onEnd && chunk === null) {
+            if (this.streamingBuffer.trim().length > 0) {
+                await this.generateAndQueueAudio(this.streamingBuffer.trim());
+            }
+            // キュー再生が完了するまで待つ
+            await this.waitForQueueCompletion();
+            if (onEnd) onEnd();
+        }
+    }
+
+    /**
+     * 最後の文の終わりを見つける
+     * @param {string} text - テキスト
+     * @returns {number} 最後の文の終わりの位置
+     */
+    findLastSentenceEnd(text) {
+        const sentenceEndings = /[。！？\n]/g;
+        let lastIndex = -1;
+        let match;
+        
+        while ((match = sentenceEndings.exec(text)) !== null) {
+            lastIndex = match.index;
+        }
+        
+        return lastIndex;
+    }
+
+    /**
+     * テキストから音声を生成してキューに追加
+     * @param {string} text - 音声化するテキスト
+     */
+    async generateAndQueueAudio(text) {
+        if (!text || text.trim().length === 0) return;
+        
+        try {
+            this.isSpeaking = true;
+            
+            // OpenAI TTS APIで音声を生成
+            const audioBlob = await window.aiClient.textToSpeech(
+                text,
+                this.ttsVoice,
+                this.ttsModel
+            );
+            
+            // キューに追加
+            this.audioQueue.push({
+                blob: audioBlob,
+                text: text
+            });
+            
+            // キュー再生を開始（まだ再生中でない場合）
+            if (!this.isPlayingQueue) {
+                this.playAudioQueue();
+            }
+            
+        } catch (error) {
+            console.error('音声生成エラー:', error);
+            // エラー時はフォールバック
+            this.speakFallback(text, null);
+        }
+    }
+
+    /**
+     * 音声キューを順次再生
+     */
+    async playAudioQueue() {
+        if (this.isPlayingQueue || this.audioQueue.length === 0) {
+            return;
+        }
+        
+        this.isPlayingQueue = true;
+        
+        while (this.audioQueue.length > 0) {
+            const item = this.audioQueue.shift();
+            
+            try {
+                const audioUrl = URL.createObjectURL(item.blob);
+                const audio = new Audio(audioUrl);
+                
+                // 再生完了を待つ
+                await new Promise((resolve, reject) => {
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                        resolve();
+                    };
+                    
+                    audio.onerror = (error) => {
+                        URL.revokeObjectURL(audioUrl);
+                        reject(error);
+                    };
+                    
+                    audio.play().catch(reject);
+                });
+                
+                // 次の音声までの短い間（自然な会話フロー）
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (error) {
+                console.error('音声再生エラー:', error);
+            }
+        }
+        
+        this.isPlayingQueue = false;
+        this.isSpeaking = false;
+    }
+
+    /**
+     * キュー再生の完了を待つ
+     */
+    async waitForQueueCompletion() {
+        while (this.isPlayingQueue || this.audioQueue.length > 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
     }
 }
 

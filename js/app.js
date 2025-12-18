@@ -493,16 +493,20 @@ class VoiceChatApp {
                 this.currentConversation.messages,
                 this.currentCategory,
                 // ストリーミングコールバック
-                (chunk, accumulated) => {
+                async (chunk, accumulated) => {
                     fullResponse = accumulated;
                     
                     // 最初のチャンクでメッセージを作成
                     if (!streamMessageId) {
                         streamMessageId = this.addStreamingMessage('assistant', chunk);
+                        this.hideLoading(); // 最初のチャンクが来たらローディングを非表示
                     } else {
                         // 既存メッセージを更新
                         this.updateStreamingMessage(streamMessageId, accumulated);
                     }
+                    
+                    // ストリーミングTTS: テキストが到着するたびに音声を生成
+                    await this.speech.addStreamingText(chunk, accumulated, null);
                 }
             );
 
@@ -517,8 +521,10 @@ class VoiceChatApp {
                 fullResponse = response;
             }
 
-            // 音声で読み上げ（非同期）
-            await this.speech.speak(fullResponse || response, null);
+            // ストリーミングTTSの完了処理（残りのテキストを処理）
+            await this.speech.addStreamingText(null, fullResponse || response, () => {
+                console.log('ストリーミングTTS完了');
+            });
 
         } catch (error) {
             this.hideLoading();
